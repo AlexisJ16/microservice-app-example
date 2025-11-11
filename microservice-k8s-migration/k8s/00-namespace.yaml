@@ -1,0 +1,7 @@
+# k8s/00-namespace.yaml
+# Define el Namespace para aislar los recursos de la aplicación de microservicios.
+# Es una buena práctica separar las aplicaciones en sus propios namespaces para una mejor gestión y control de acceso.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microservices-ns

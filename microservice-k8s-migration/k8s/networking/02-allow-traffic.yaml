@@ -1,0 +1,74 @@
+# k8s/networking/02-allow-traffic.yaml
+# Define las reglas de red para permitir el tráfico legítimo después de haber aplicado la política de denegación por defecto.
+# Es crucial para la seguridad y el funcionamiento correcto de la aplicación.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-traffic
+  namespace: microservices-ns
+spec:
+  podSelector: {} # Aplica a todos los pods del namespace
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # 1. Permite el tráfico desde el Ingress Controller de NGINX a todos los servicios.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              # Esta etiqueta depende de la instalación de tu Ingress Controller.
+              # Verifica la etiqueta del namespace donde corre el Ingress Controller.
+              # Ejemplo: `kubectl get ns --show-labels`
+              name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000 # Puerto del client-service
+        - protocol: TCP
+          port: 5001 # Puerto del users-service
+        - protocol: TCP
+          port: 5002 # Puerto del posts-service
+    # 2. Permite que el cliente (frontend) se comunique con los servicios de backend (users y posts).
+    - from:
+        - podSelector:
+            matchLabels:
+              app: client
+      to:
+        - podSelector:
+            matchLabels:
+              app: users
+        - podSelector:
+            matchLabels:
+              app: posts
+      ports:
+        - protocol: TCP
+          port: 5001
+        - protocol: TCP
+          port: 5002
+  egress:
+    # 1. Permite todas las consultas DNS al servicio kube-dns.
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # 2. Permite el tráfico de salida desde el cliente hacia los backends.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: users
+        - podSelector:
+            matchLabels:
+              app: posts
+      ports:
+        - protocol: TCP
+          port: 5001
+        - protocol: TCP
+          port: 5002

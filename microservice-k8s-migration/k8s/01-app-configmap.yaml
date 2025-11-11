@@ -1,0 +1,11 @@
+# k8s/01-app-configmap.yaml
+# Almacena la configuración no sensible que necesitan los microservicios.
+# En este caso, las URLs de los servicios internos, permitiendo que los componentes se descubran entre sí.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: microservices-ns
+data:
+  USERS_SERVICE_URL: "http://users-service:5001"
+  POSTS_SERVICE_URL: "http://posts-service:5002"

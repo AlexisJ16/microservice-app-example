@@ -1,0 +1,15 @@
+# k8s/03-posts-pvc.yaml
+# Solicita almacenamiento persistente para el servicio de posts.
+# Esto asegura que los datos de los posts no se pierdan si el Pod se reinicia.
+# ReadWriteOnce significa que el volumen solo puede ser montado por un único nodo a la vez.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: posts-data-pvc
+  namespace: microservices-ns
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

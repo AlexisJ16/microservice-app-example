@@ -1,0 +1,51 @@
+# k8s/05-posts-deployment.yaml
+# Define el Deployment y el Service para el microservicio de posts.
+# Este deployment monta un PersistentVolumeClaim para almacenar los datos de forma persistente.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posts-deployment
+  namespace: microservices-ns
+  labels:
+    app: posts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: posts
+  template:
+    metadata:
+      labels:
+        app: posts
+    spec:
+      containers:
+        - name: posts-service
+          image: alexisj16/posts-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5002
+          envFrom:
+            - configMapRef:
+                name: app-config
+          volumeMounts:
+            - name: posts-data
+              mountPath: /app/data
+      volumes:
+        - name: posts-data
+          persistentVolumeClaim:
+            claimName: posts-data-pvc
+---
+# Service de tipo ClusterIP para el microservicio de posts.
+apiVersion: v1
+kind: Service
+metadata:
+  name: posts-service
+  namespace: microservices-ns
+spec:
+  type: ClusterIP
+  selector:
+    app: posts
+  ports:
+    - protocol: TCP
+      port: 5002
+      targetPort: 5002

@@ -1,0 +1,37 @@
+# k8s/07-ingress.yaml
+# Expone los servicios HTTP y HTTPS fuera del clúster.
+# Define reglas de enrutamiento basadas en el path de la URL para dirigir el tráfico a los servicios correctos.
+# Es necesario tener un Ingress Controller (como NGINX) instalado en el clúster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: microservices-ns
+  annotations:
+    # Anotación para reescribir el path. Por ejemplo, una petición a /users/ se reenvía a / en el servicio de destino.
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: client-service
+                port:
+                  number: 3000
+          - path: /users(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: users-service
+                port:
+                  number: 5001
+          - path: /posts(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: posts-service
+                port:
+                  number: 5002

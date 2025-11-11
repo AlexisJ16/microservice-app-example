@@ -1,0 +1,44 @@
+# k8s/06-client-deployment.yaml
+# Define el Deployment y el Service para el frontend (cliente).
+# Este es el punto de entrada de la interfaz de usuario que se comunicará con los microservicios de backend.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-deployment
+  namespace: microservices-ns
+  labels:
+    app: client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      containers:
+        - name: client
+          image: alexisj16/client:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: app-config
+---
+# Service de tipo ClusterIP para el frontend.
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-service
+  namespace: microservices-ns
+spec:
+  type: ClusterIP
+  selector:
+    app: client
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

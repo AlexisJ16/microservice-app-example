@@ -1,0 +1,14 @@
+# k8s/networking/01-default-deny.yaml
+# Implementa una política de "cero confianza" (zero-trust).
+# Por defecto, bloquea todo el tráfico de entrada (Ingress) y salida (Egress) para todos los Pods en el namespace.
+# Esto obliga a definir explícitamente qué comunicaciones están permitidas.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: microservices-ns
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

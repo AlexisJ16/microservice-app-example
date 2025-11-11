@@ -1,0 +1,53 @@
+# k8s/04-users-deployment.yaml
+# Define el Deployment y el Service para el microservicio de usuarios.
+# El Deployment gestiona los Pods, asegurando que el número deseado de réplicas esté siempre en ejecución.
+# El Service proporciona un punto de acceso estable (DNS interno) para el microservicio.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-deployment
+  namespace: microservices-ns
+  labels:
+    app: users
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: users
+  template:
+    metadata:
+      labels:
+        app: users
+    spec:
+      containers:
+        - name: users-service
+          image: alexisj16/users-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+          resources:
+            requests:
+              cpu: "100m"
+            limits:
+              cpu: "200m"
+---
+# Service de tipo ClusterIP para el microservicio de usuarios.
+# Expone el servicio en un puerto interno dentro del clúster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-service
+  namespace: microservices-ns
+spec:
+  type: ClusterIP
+  selector:
+    app: users
+  ports:
+    - protocol: TCP
+      port: 5001
+      targetPort: 5001
