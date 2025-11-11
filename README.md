@@ -1,3 +1,79 @@
+# **Microservice Kubernetes Migration**
+
+## **Quick Start - Automated Deployment**
+
+This repository includes automated scripts for rapid deployment and cleanup of the microservices application on Kubernetes.
+
+### **Prerequisites**
+- Docker Desktop with Kubernetes enabled (recommended 6+ CPUs, 8+ GB RAM)
+- kubectl configured to communicate with your cluster
+- Helm 3.x (for monitoring stack)
+
+### **Deployment Scripts**
+
+#### **1. Deploy the Application**
+```bash
+./scripts/deploy-app.sh
+```
+This script will:
+- Build Docker images for all microservices (users, posts, client)
+- Create the `microservices-ns` namespace
+- Apply all Kubernetes manifests (ConfigMaps, Secrets, Deployments, Services, Ingress, HPA)
+- Configure network policies
+- Display the final cluster status
+
+#### **2. Deploy Monitoring Stack (Optional)**
+```bash
+./scripts/deploy-monitoring.sh
+```
+This script will:
+- Add the Prometheus Helm repository
+- Install kube-prometheus-stack (Prometheus + Grafana)
+- Provide access instructions for Grafana and Prometheus
+
+#### **3. Cleanup Everything**
+```bash
+./scripts/cleanup.sh
+```
+This script will:
+- Remove all application resources
+- Uninstall the monitoring stack
+- Delete the `microservices-ns` and `monitoring` namespaces
+
+### **Accessing the Application**
+
+After deployment, access your services:
+
+**Via Ingress:**
+```bash
+kubectl get ingress -n microservices-ns
+# Access the application at the Ingress IP
+```
+
+**Via Port Forward:**
+```bash
+# Client service
+kubectl port-forward svc/client-service 3000:3000 -n microservices-ns
+
+# Users service
+kubectl port-forward svc/users-service 5001:5001 -n microservices-ns
+
+# Posts service
+kubectl port-forward svc/posts-service 5002:5002 -n microservices-ns
+```
+
+**Accessing Monitoring:**
+```bash
+# Get Grafana password
+kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode && echo
+
+# Port-forward Grafana
+kubectl port-forward svc/prometheus-grafana 8080:80 -n monitoring
+# Open http://localhost:8080 (username: admin)
+```
+
+---
+
 ## **Guía de Migración de Microservicios a un Ecosistema Kubernetes Avanzado**
 
 ### **Resumen Ejecutivo (Executive Summary)**
