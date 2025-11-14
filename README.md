@@ -1,257 +1,480 @@
-## **Guía de Migración de Microservicios a un Ecosistema Kubernetes Avanzado**
+# Aplicación de Microservicios - Migración a Kubernetes
 
-### **Resumen Ejecutivo (Executive Summary)**
+[![GitHub Codespaces](https://img.shields.io/badge/Codespaces-Ready-blue?logo=github)](https://github.com/codespaces)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Enabled-326CE5?logo=kubernetes)](https://kubernetes.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Este documento técnico sirve como una guía completa para la migración de una aplicación de microservicios contenerizada a un clúster de Kubernetes gestionado localmente. El objetivo es ir más allá de un despliegue básico, implementando un conjunto de patrones y herramientas estándar de la industria que garantizan seguridad, escalabilidad, configurabilidad y observabilidad.
+## 📋 Descripción del Proyecto
 
-Se abordará la implementación de **Políticas de Red**, gestión de configuración con **ConfigMaps y Secrets**, persistencia de datos con **Volúmenes Persistentes**, enrutamiento de tráfico con **Ingress**, estrategias de despliegue avanzadas, autoescalado con **HPA** y un stack de monitoreo completo con **Prometheus y Grafana**.
+Aplicación de microservicios completa que demuestra patrones modernos de arquitectura Cloud Native, implementando migración a Kubernetes con mejores prácticas de DevOps. El proyecto incluye autenticación, gestión de usuarios, TODOs, y un frontend interactivo, todo desplegable en Kubernetes con un solo comando.
 
-Todo el proceso está encapsulado en scripts de automatización para una ejecución rápida, fiable y repetible, alineándose con las mejores prácticas de DevOps e Infraestructura como Código (IaC).
+### 🎯 Características Principales
 
-### **0. Preparación del Entorno Local: Docker Desktop**
+- **Arquitectura de Microservicios**: 3 servicios backend independientes (Auth, Users, TODOs)
+- **Frontend Moderno**: Aplicación Vue.js responsiva
+- **Kubernetes Native**: Manifiestos completos siguiendo mejores prácticas
+- **Seguridad**: NetworkPolicies, Secrets, RBAC
+- **Escalabilidad**: HorizontalPodAutoscaler configurado
+- **Observabilidad**: Stack completo de Prometheus + Grafana
+- **GitHub Codespaces**: Entorno preconfigurado listo para usar
 
-Para este laboratorio, se ha elegido **Docker Desktop** como la plataforma de ejecución. Es la opción más rápida y eficiente para un entorno de desarrollo local por las siguientes razones:
-*   **Kubernetes Integrado:** Proporciona un clúster de Kubernetes de un solo nodo que se puede activar con un solo clic.
-*   **Ingress Controller Pre-configurado:** Incluye un Ingress Controller listo para usar, eliminando la necesidad de instalar uno manualmente.
-*   **StorageClass por Defecto:** Viene con una `StorageClass` predeterminada (`docker-desktop`) que provisiona dinámicamente el almacenamiento para los Volúmenes Persistentes.
+## 🏗️ Arquitectura
 
-#### **Pasos de Configuración (Acción Requerida)**
+### Microservicios
 
-1.  **Instalar Docker Desktop:** Asegúrate de tener la última versión instalada y funcionando.
-2.  **Activar Kubernetes:** Ve a `Settings` > `Kubernetes` y marca la casilla `Enable Kubernetes`. Docker Desktop descargará las imágenes necesarias y arrancará el clúster.
-3.  **Aumentar Recursos:** En `Settings` > `Resources`, asigna recursos suficientes a Docker Desktop, ya que el stack de monitoreo consume una cantidad considerable.
-    *   **CPUs:** Mínimo 4 (Recomendado: 6+)
-    *   **Memoria:** Mínimo 6 GB (Recomendado: 8+ GB)
-4.  **Verificar el Entorno:** Abre una terminal y confirma que `kubectl` puede comunicarse con el clúster.
-    ```bash
-    kubectl cluster-info
-    kubectl get nodes
-    # Deberías ver un solo nodo llamado 'docker-desktop' en estado 'Ready'.
-    ```
+#### 1. **Auth API** (Go)
 
-### **1. Estrategia de Migración y Arquitectura en Kubernetes**
+Servicio de autenticación que genera tokens JWT.
 
-La aplicación consta de tres microservicios principales (`users`, `posts`, `client`) y un reverse proxy. La arquitectura objetivo en Kubernetes será la siguiente:
+- **Puerto**: 8000
+- **Endpoints**:
+  - `POST /login` - Autenticación de usuarios
+- **Tecnología**: Go 1.18+
 
-1.  **Contenerización:** Se utilizarán los Dockerfiles existentes en el repositorio para construir las imágenes de los microservicios.
-2.  **Despliegue (`Deployment`):** Cada microservicio se desplegará como un `Deployment` de Kubernetes, lo que nos permite gestionar su ciclo de vida, réplicas y estrategias de actualización.
-3.  **Servicio Interno (`Service`):** Cada `Deployment` estará expuesto internamente en el clúster mediante un `Service` de tipo `ClusterIP`. Esto proporciona un punto de acceso estable para la comunicación entre servicios.
-4.  **Configuración Externa (`ConfigMap` y `Secret`):** Las configuraciones (puertos, variables de entorno) y los secretos (claves de API, JWT) se externalizarán en `ConfigMaps` y `Secrets`, respectivamente.
-5.  **Persistencia de Datos (`PVC` y `PV`):** El servicio `posts` utilizará una `PersistentVolumeClaim` (PVC) para solicitar almacenamiento, que será montado en su pod para que los datos persistan ante reinicios.
-6.  **Acceso Externo (`Ingress`):** Un único `Ingress` gestionará todo el tráfico entrante, enrutando las peticiones a los servicios correctos basándose en la ruta (`/users`, `/posts`, `/`).
-7.  **Seguridad (`NetworkPolicy`):** Se establecerán políticas de red estrictas para controlar el flujo de tráfico entre los pods, aplicando un modelo de "confianza cero".
-8.  **Autoescalado (`HPA`):** El servicio `users` se configurará con un `HorizontalPodAutoscaler` (HPA) que aumentará o disminuirá el número de réplicas en función de la carga de la CPU.
-9.  **Monitoreo:** Prometheus se configurará para recolectar métricas del clúster y las aplicaciones, y Grafana se utilizará para visualizar estas métricas en dashboards interactivos.
+#### 2. **Users API** (Java/Spring Boot)
 
-### **2. Implementación Paso a Paso**
+Gestión de datos de usuarios.
 
-Esta sección detalla los comandos y manifiestos para cada etapa. Todo este proceso será automatizado por los scripts proporcionados en la sección 3.
+- **Puerto**: 8083
+- **Endpoints**:
+  - `GET /users` - Listar todos los usuarios
+  - `GET /users/:username` - Obtener usuario por nombre
+- **Tecnología**: Java 8, Spring Boot
 
-#### **2.1. Creación de Imágenes Docker y Namespace**
+#### 3. **TODOs API** (Node.js)
 
-Primero, es necesario construir las imágenes Docker de los microservicios para que Kubernetes pueda utilizarlas. Luego, se creará un `Namespace` para aislar todos nuestros recursos.
+CRUD completo para tareas TODO.
 
-```bash
-# Navega al repositorio clonado
-# cd microservice-app-example
+- **Puerto**: 8082
+- **Endpoints**:
+  - `GET /todos` - Listar TODOs del usuario
+  - `POST /todos` - Crear nuevo TODO
+  - `DELETE /todos/:taskId` - Eliminar TODO
+- **Tecnología**: Node.js 8+, Express
+- **Storage**: En memoria + Redis para logging
 
-# Construir las imágenes (repetir para posts y client)
-docker build -t alexisj16/users-service:latest ./users-service
-docker build -t alexisj16/posts-service:latest ./posts-service
-docker build -t alexisj16/client:latest ./client
+#### 4. **Frontend** (Vue.js)
 
-# Crear el Namespace en Kubernetes
-kubectl create namespace microservices-ns
+Interfaz de usuario interactiva.
+
+- **Puerto**: 8080
+- **Tecnología**: Vue.js 2.x, Webpack
+
+### Arquitectura en Kubernetes
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    Ingress Controller                    │
+│              (Enrutamiento basado en paths)             │
+└──────────────────┬──────────────┬──────────────────────┘
+                   │              │
+         ┌─────────┴────┐  ┌─────┴──────┐  ┌─────────┐
+         │   Client     │  │   Users    │  │  Posts  │
+         │   Service    │  │  Service   │  │ Service │
+         └──────┬───────┘  └─────┬──────┘  └────┬────┘
+                │                 │              │
+         ┌──────▼───────┐  ┌─────▼──────┐  ┌───▼─────┐
+         │   Client     │  │   Users    │  │  Posts  │
+         │  Deployment  │  │ Deployment │  │Deployment│
+         │  (1 replica) │  │ (HPA 1-5)  │  │(1 replica)│
+         └──────────────┘  └────────────┘  └─────┬────┘
+                                                  │
+                                           ┌──────▼──────┐
+                                           │ Persistent  │
+                                           │   Volume    │
+                                           │   (1 Gi)    │
+                                           └─────────────┘
 ```
 
-#### **2.2. Implementación de ConfigMaps y Secrets**
+### Componentes de Kubernetes Implementados
 
-*   **Teoría:**
-    *   **ConfigMap:** Almacena datos de configuración no sensibles como pares clave-valor. Permite desacoplar la configuración de la imagen del contenedor.
-    *   **Secret:** Diseñado para almacenar datos sensibles como contraseñas, tokens o claves. Los datos se almacenan codificados en Base64 (nota: no es encriptación, es codificación), y ofrecen mecanismos de control más estrictos.
+- **Namespace**: `microservices-ns` - Aislamiento de recursos
+- **ConfigMaps**: Configuración de URLs de servicios
+- **Secrets**: Claves JWT codificadas en Base64
+- **Deployments**: Gestión del ciclo de vida de pods
+- **Services (ClusterIP)**: Descubrimiento de servicios interno
+- **Ingress**: Enrutamiento HTTP externo
+- **PersistentVolumeClaim**: Almacenamiento persistente (1Gi)
+- **HorizontalPodAutoscaler**: Autoescalado basado en CPU (75%)
+- **NetworkPolicies**: Seguridad de red (deny-all + allow específicos)
 
-*   **Comandos de creación:**
-    ```bash
-    # Crear un ConfigMap para la configuración de la aplicación
-    kubectl create configmap app-config -n microservices-ns \
-      --from-literal=USERS_SERVICE_URL=http://users-service:5001 \
-      --from-literal=POSTS_SERVICE_URL=http://posts-service:5002
+## 🚀 Inicio Rápido con GitHub Codespaces
 
-    # Crear un Secret para datos sensibles (ej. una clave JWT)
-    kubectl create secret generic app-secret -n microservices-ns \
-      --from-literal=JWT_KEY='unaclavesupersecreta123'
-    ```
+La forma más rápida de probar este proyecto es usando GitHub Codespaces, que proporciona un entorno completo preconfigurado.
 
-#### **2.3. Persistencia de Datos con PVC y PV**
+### Paso 1: Crear un Codespace
 
-*   **Teoría:**
-    *   **PersistentVolume (PV):** Es una pieza de almacenamiento en el clúster provisionada por un administrador. Es un recurso del clúster como un nodo.
-    *   **PersistentVolumeClaim (PVC):** Es una solicitud de almacenamiento por parte de un usuario. Es similar a cómo un Pod consume recursos de CPU/Memoria de un nodo. Kubernetes buscará un PV que satisfaga los requisitos de la PVC y los "vinculará" (bind).
-    *   En Docker Desktop, la `StorageClass` por defecto provisionará dinámicamente un PV cuando se cree una PVC.
+1. Ve al repositorio en GitHub
+2. Haz clic en **Code** → **Codespaces** → **Create codespace on master**
+3. Espera 2-3 minutos mientras se configura el entorno
 
-*   **Manifiesto de Ejemplo (`posts-pvc.yaml`):**
-    ```yaml
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    metadata:
-      name: posts-data-pvc
-      namespace: microservices-ns
-    spec:
-      accessModes:
-        - ReadWriteOnce # Puede ser montado como lectura-escritura por un único nodo
-      resources:
-        requests:
-          storage: 1Gi # Solicitar 1 Gibibyte de almacenamiento
-    ```*   **Comando de aplicación:**
-    ```bash
-    kubectl apply -f posts-pvc.yaml
-    ```
+El Codespace incluye automáticamente:
 
-#### **2.4. Despliegues y Servicios (Deployments & Services)**
+- Docker-in-Docker
+- kubectl
+- Helm
+- Extensiones de VS Code para Kubernetes
 
-Cada microservicio necesitará un `Deployment` y un `Service`.
+### Paso 2: Configurar Kubernetes (kind)
 
-*   **Teoría (Deployment):** Un `Deployment` describe el estado deseado de una aplicación. El controlador del Deployment cambia el estado actual al estado deseado de forma controlada. Se utilizará la estrategia por defecto **Rolling Update**, que garantiza cero tiempo de inactividad al actualizar las aplicaciones reemplazando gradualmente los pods antiguos por los nuevos.
-*   **Manifiesto de Ejemplo (`users-deployment.yaml`):**
-    ```yaml
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: users-deployment
-      namespace: microservices-ns
-    spec:
-      replicas: 1
-      selector:
-        matchLabels:
-          app: users-service
-      template:
-        metadata:
-          labels:
-            app: users-service
-        spec:
-          containers:
-          - name: users-service
-            image: alexisj16/users-service:latest
-            imagePullPolicy: IfNotPresent # O 'Never' si las imágenes solo son locales
-            ports:
-            - containerPort: 5001
-            envFrom: # Cargar variables desde ConfigMaps y Secrets
-            - configMapRef:
-                name: app-config
-            - secretRef:
-                name: app-secret
-            resources: # Esencial para el HPA
-              requests:
-                cpu: "100m" # Solicita 0.1 de un core de CPU
-              limits:
-                cpu: "200m"
-    ---
-    apiVersion: v1
-    kind: Service
-    metadata:
-      name: users-service
-      namespace: microservices-ns
-    spec:
-      selector:
-        app: users-service
-      ports:
-        - protocol: TCP
-          port: 5001
-          targetPort: 5001
-    ```
+Ejecuta el script de configuración que instalará un clúster Kubernetes local usando **kind**:
 
-*   **Comandos de aplicación:** Se aplicarán los manifiestos para `users`, `posts` y `client`.
+```bash
+cd microservice-k8s-migration/scripts
+bash setup-codespaces.sh
+```
 
-#### **2.5. Habilitación de Autoescalado (HPA)**
+Este script realiza las siguientes acciones:
 
-*   **Teoría:** El `HorizontalPodAutoscaler` (HPA) ajusta automáticamente el número de pods en un `Deployment`, `ReplicaSet`, etc., basándose en la utilización observada de CPU u otras métricas personalizadas. Es un pilar fundamental de las arquitecturas elásticas y eficientes en costos.
-*   **Requisito previo:** Es necesario que los pods a escalar tengan definidos los `requests` de recursos.
+- Instala `kubectl` (si no está disponible)
+- Instala `kind` (Kubernetes in Docker)
+- Instala `Helm` v3
+- Crea un clúster llamado `microservices-cluster`
+- Instala NGINX Ingress Controller
+- Configura port mappings para acceso externo
 
-*   **Comando de creación (imperativo):**
-    ```bash
-    kubectl autoscale deployment users-deployment -n microservices-ns --cpu-percent=50 --min=1 --max=5
-    ```
-*   **Verificación:**
-    ```bash
-    kubectl get hpa -n microservices-ns -w # El '-w' es para 'watch'
-    ```
-    Inicialmente mostrará `<unknown>/50%` mientras el `metrics-server` recolecta los datos. Luego se estabilizará.
+⏱️ **Tiempo estimado**: 3-5 minutos
 
-#### **2.6. Configuración de Ingress**
+### Paso 3: Desplegar la Aplicación
 
-*   **Comando de aplicación:** Se aplica un único manifiesto `Ingress` que enruta el tráfico a los tres servicios.
+```bash
+bash deploy-app.sh
+```
 
-#### **2.7. Implementación de Políticas de Red (Network Policies)**
+Este script ejecuta:
 
-*   **Teoría:** Las `NetworkPolicies` son como un firewall para los pods. Permiten especificar cómo un pod (o grupo de pods) puede comunicarse con otros pods y puntos de red. Por defecto, en un clúster sin políticas, todo el tráfico está permitido. La estrategia recomendada es:
-    1.  Crear una política "default-deny" que bloquee todo el tráfico.
-    2.  Crear políticas explícitas que permitan el tráfico necesario (ej: permitir que el Ingress Controller hable con los servicios, o que el servicio `client` hable con el de `users`).
+1. Aplica el namespace
+2. Crea ConfigMaps y Secrets
+3. Crea PersistentVolumeClaim
+4. Despliega los 3 microservicios con sus Services
+5. Configura el Ingress
+6. Habilita HPA para el servicio de usuarios
+7. Aplica NetworkPolicies de seguridad
+8. Muestra el estado final de todos los recursos
 
-*   **Manifiesto de Ejemplo (`default-deny.yaml`):**
-    ```yaml
-    apiVersion: networking.k8s.io/v1
-    kind: NetworkPolicy
-    metadata:
-      name: default-deny-all
-      namespace: microservices-ns
-    spec:
-      podSelector: {} # Un selector vacío selecciona todos los pods en el namespace
-      policyTypes:
-      - Ingress
-      - Egress
-    ```
+### Paso 4: Acceder a la Aplicación
 
-*   **Comando de aplicación:** Se aplican las políticas una por una, verificando la conectividad en cada paso.
+En GitHub Codespaces:
 
-#### **2.8. Despliegue del Stack de Monitoreo**
+1. Ve al panel de **PUERTOS** (parte inferior de VS Code)
+2. Busca el puerto **80** (Ingress HTTP)
+3. Haz clic en el icono del globo 🌐 para abrir la URL pública
+4. ¡La aplicación está lista para usar!
 
-*   **Teoría:** Se utilizará el chart de Helm `kube-prometheus-stack`, que es el estándar de la comunidad para desplegar un stack completo de monitoreo. Incluye:
-    *   **Prometheus:** Para la recolección y almacenamiento de métricas.
-    *   **Grafana:** Para la visualización de métricas y creación de dashboards.
-    *   **Alertmanager:** Para la gestión de alertas.
-    *   **Exporters:** Como el `node-exporter` (métricas de nodos) y `kube-state-metrics`.
+**Usuarios de prueba**:
 
-*   **Comandos de instalación con Helm:**
-    ```bash
-    # Añadir el repositorio de charts de Prometheus
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm repo update
+| Username | Password |
+|----------|----------|
+| admin    | admin    |
+| johnd    | foo      |
+| janed    | ddd      |
 
-    # Crear namespace para el monitoreo
-    kubectl create namespace monitoring
+### Paso 5: (Opcional) Desplegar Monitoreo
 
-    # Instalar el stack
-    helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring
-    ```
+Para habilitar Prometheus y Grafana:
 
-*   **Verificación y Acceso:**
-    ```bash
-    # Verificar que todos los pods de monitoreo estén corriendo
-    kubectl get pods -n monitoring
+```bash
+bash deploy-monitoring.sh
+```
 
-    # Acceder a Grafana
-    kubectl port-forward svc/prometheus-grafana 8080:80 -n monitoring
-    # Abrir http://localhost:8080
+**Acceder a Grafana**:
 
-    # Obtener la contraseña de admin de Grafana
-    kubectl get secret prometheus-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 --decode
-    # Usuario por defecto: admin
-    ```
+```bash
+# Port forward a Grafana
+kubectl port-forward -n monitoring svc/prometheus-grafana 8080:80
 
-### **3. Scripts de Automatización**
+# Obtener contraseña de admin
+kubectl get secret -n monitoring prometheus-grafana -o jsonpath='{.data.admin-password}' | base64 --decode
+```
 
-Para cumplir con el requisito de velocidad, todo el proceso se empaqueta en tres scripts.
+- Usuario: `admin`
+- Abre el puerto **8080** desde el panel de PUERTOS
 
-1.  **`deploy-app.sh`**: Construye las imágenes y despliega toda la aplicación con su configuración (Deployments, Services, HPA, Policies, etc.).
-2.  **`deploy-monitoring.sh`**: Despliega el stack de Prometheus y Grafana usando Helm.
-3.  **`cleanup.sh`**: Elimina todos los recursos creados para dejar el clúster limpio.
+### Paso 6: Limpiar Recursos
 
-### **5. Bibliografía y Referencias**
-1.  Kubernetes Documentation. (s.f.). *Network Policies*. Obtenido de https://kubernetes.io/docs/concepts/services-networking/network-policies/
-2.  Kubernetes Documentation. (s.f.). *ConfigMaps*. Obtenido de https://kubernetes.io/es/docs/concepts/configuration/configmap/
-3.  Kubernetes Documentation. (s.f.). *Horizontal Pod Autoscale*. Obtenido de https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
-4.  Kubernetes Documentation. (s.f.). *Deployments*. Obtenido de https://kubernetes.io/es/docs/concepts/workloads/controllers/deployment/
-5.  Prometheus Community. (s.f.). *Prometheus Helm Charts*. Obtenido de https://github.com/prometheus-community/helm-charts
-6.  Grafana Labs. (s.f.). *Grafana Documentation*. Obtenido de https://grafana.com/docs/
-7.  Kubernetes Documentation. (s.f.). *Persistent Volumes*. Obtenido de https://kubernetes.io/es/docs/concepts/storage/persistent-volumes/
-8.  Kubernetes Documentation. (s.f.). *Secrets*. Obtenido de https://kubernetes.io/docs/concepts/configuration/secret/
+Cuando termines de probar:
+
+```bash
+bash cleanup.sh
+```
+
+Este comando elimina:
+
+- Todos los recursos de la aplicación
+- El release de Helm de Prometheus
+- Los namespaces `microservices-ns` y `monitoring`
+
+## 💻 Desarrollo Local (sin Codespaces)
+
+### Prerrequisitos
+
+- Docker Desktop con Kubernetes habilitado
+- kubectl instalado
+- Helm 3 instalado
+- Mínimo 6GB RAM y 4 CPUs asignados a Docker Desktop
+
+### Configuración de Docker Desktop
+
+1. **Activar Kubernetes**:
+   - Settings → Kubernetes → Enable Kubernetes
+2. **Aumentar Recursos**:
+   - Settings → Resources
+   - CPUs: Mínimo 4 (Recomendado 6+)
+   - Memoria: Mínimo 6GB (Recomendado 8GB+)
+
+### Despliegue Local
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/AlexisJ16/microservice-app-example.git
+cd microservice-app-example
+
+# Navegar al directorio de Kubernetes
+cd microservice-k8s-migration/scripts
+
+# Desplegar la aplicación
+./deploy-app.sh
+
+# Verificar el despliegue
+kubectl get all -n microservices-ns
+
+# Obtener la URL del Ingress
+kubectl get ingress -n microservices-ns
+```
+
+## 📁 Estructura del Repositorio
+
+```text
+microservice-app-example/
+├── .devcontainer/
+│   └── devcontainer.json          # Configuración de Codespaces
+├── auth-api/                      # Servicio de autenticación (Go)
+│   ├── main.go
+│   ├── user.go
+│   └── README.md
+├── users-api/                     # Servicio de usuarios (Java)
+│   ├── src/
+│   ├── pom.xml
+│   └── README.md
+├── todos-api/                     # Servicio de TODOs (Node.js)
+│   ├── server.js
+│   ├── package.json
+│   └── README.md
+├── frontend/                      # Frontend Vue.js
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+├── log-message-processor/         # Procesador de logs (Python)
+│   ├── main.py
+│   └── requirements.txt
+├── microservice-k8s-migration/    # ★ Manifiestos de Kubernetes
+│   ├── k8s/
+│   │   ├── 00-namespace.yaml
+│   │   ├── 01-app-configmap.yaml
+│   │   ├── 02-app-secret.yaml
+│   │   ├── 03-posts-pvc.yaml
+│   │   ├── 04-users-deployment.yaml
+│   │   ├── 05-posts-deployment.yaml
+│   │   ├── 06-client-deployment.yaml
+│   │   ├── 07-ingress.yaml
+│   │   ├── 08-hpa.yaml
+│   │   └── networking/
+│   │       ├── 01-default-deny.yaml
+│   │       └── 02-allow-traffic.yaml
+│   └── scripts/
+│       ├── setup-codespaces.sh    # Configuración automática para Codespaces
+│       ├── deploy-app.sh          # Despliegue de la aplicación
+│       ├── deploy-monitoring.sh   # Despliegue de Prometheus/Grafana
+│       └── cleanup.sh             # Limpieza de recursos
+├── LICENSE
+└── README.md                      # Este archivo
+```
+
+## 🔧 Comandos Útiles de Kubernetes
+
+### Inspección de Recursos
+
+```bash
+# Ver todos los recursos en el namespace
+kubectl get all -n microservices-ns
+
+# Ver el estado de los pods
+kubectl get pods -n microservices-ns
+
+# Ver logs de un pod específico
+kubectl logs -n microservices-ns <nombre-del-pod>
+
+# Describir un pod (para troubleshooting)
+kubectl describe pod -n microservices-ns <nombre-del-pod>
+
+# Ver el estado del HPA
+kubectl get hpa -n microservices-ns
+
+# Ver el Ingress y su dirección
+kubectl get ingress -n microservices-ns
+```
+
+### Port Forwarding (para acceso directo)
+
+```bash
+# Acceder directamente al frontend
+kubectl port-forward -n microservices-ns svc/client-service 3000:3000
+
+# Acceder al servicio de usuarios
+kubectl port-forward -n microservices-ns svc/users-service 5001:5001
+
+# Acceder a Grafana
+kubectl port-forward -n monitoring svc/prometheus-grafana 8080:80
+```
+
+### Escalado Manual
+
+```bash
+# Escalar el deployment de usuarios
+kubectl scale deployment users-deployment -n microservices-ns --replicas=3
+
+# Ver el estado del escalado
+kubectl get pods -n microservices-ns -l app=users
+```
+
+## 🛡️ Seguridad Implementada
+
+### NetworkPolicies
+
+El proyecto implementa un modelo de **"Zero Trust"**:
+
+1. **Default Deny**: Bloquea todo el tráfico Ingress y Egress por defecto
+2. **Allow Specific**: Permite solo las comunicaciones necesarias:
+   - Ingress Controller → Servicios
+   - Client → Users/Posts
+   - Todos los pods → DNS (kube-dns)
+
+### Secrets Management
+
+- JWT keys almacenadas en Kubernetes Secrets
+- Valores codificados en Base64
+- Inyectados como variables de entorno en los pods
+
+### Best Practices
+
+- Namespaces para aislamiento
+- Resource limits y requests definidos
+- ReadinessProbe y LivenessProbe (donde aplicable)
+- ImagePullPolicy configurado correctamente
+
+## 📊 Monitoreo y Observabilidad
+
+### Stack de Prometheus
+
+Incluye:
+
+- **Prometheus**: Recolección y almacenamiento de métricas
+- **Grafana**: Visualización con dashboards predefinidos
+- **AlertManager**: Gestión de alertas
+- **Node Exporter**: Métricas del nodo
+- **Kube State Metrics**: Métricas del estado de Kubernetes
+
+### Dashboards Disponibles
+
+Grafana incluye dashboards preconstruidos para:
+
+- Kubernetes Cluster Monitoring
+- Node Exporter Full
+- Kubernetes Deployments
+- Kubernetes Pods
+
+## 🐛 Solución de Problemas
+
+### Los pods no inician
+
+```bash
+# Ver el estado detallado
+kubectl describe pod -n microservices-ns <nombre-del-pod>
+
+# Ver logs
+kubectl logs -n microservices-ns <nombre-del-pod>
+
+# Verificar eventos
+kubectl get events -n microservices-ns --sort-by='.lastTimestamp'
+```
+
+### El Ingress no funciona
+
+```bash
+# Verificar el Ingress Controller
+kubectl get pods -n ingress-nginx
+
+# Ver logs del Ingress Controller
+kubectl logs -n ingress-nginx <nombre-del-pod-ingress>
+
+# Verificar la configuración del Ingress
+kubectl describe ingress -n microservices-ns
+```
+
+### HPA muestra `<unknown>` en la métrica
+
+Esto es normal durante los primeros 1-2 minutos. El `metrics-server` necesita tiempo para recolectar datos.
+
+```bash
+# Verificar el metrics-server (en kind ya está incluido)
+kubectl get deployment metrics-server -n kube-system
+```
+
+### Reiniciar todo
+
+```bash
+bash cleanup.sh
+kind delete cluster --name microservices-cluster  # Solo en Codespaces
+bash setup-codespaces.sh  # Solo en Codespaces
+bash deploy-app.sh
+```
+
+## 📚 Recursos y Referencias
+
+### Documentación Oficial
+
+- [Kubernetes Documentation](https://kubernetes.io/docs/)
+- [kind (Kubernetes in Docker)](https://kind.sigs.k8s.io/)
+- [Helm Documentation](https://helm.sh/docs/)
+- [Prometheus Operator](https://prometheus-operator.dev/)
+- [GitHub Codespaces](https://docs.github.com/en/codespaces)
+
+### Conceptos Clave
+
+- [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+- [ConfigMaps](https://kubernetes.io/es/docs/concepts/configuration/configmap/)
+- [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+- [Persistent Volumes](https://kubernetes.io/es/docs/concepts/storage/persistent-volumes/)
+- [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
+- [Deployments](https://kubernetes.io/es/docs/concepts/workloads/controllers/deployment/)
+- [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+
+## 👥 Autores
+
+- **Proyecto Original**: [bortizf](https://github.com/bortizf)
+- **Migración a Kubernetes**: AlexisJ16
+
+## 🙏 Agradecimientos
+
+- Comunidad de Kubernetes
+- Prometheus Community
+- GitHub Codespaces Team
+- Todos los contribuidores de las tecnologías utilizadas
+
+---
+
+**⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub!**
