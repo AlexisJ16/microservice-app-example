@@ -45,11 +45,52 @@ En Kubernetes, la arquitectura se compone de:
 ## Prerrequisitos
 
 Antes de empezar, asegúrate de tener las siguientes herramientas instaladas y configuradas:
+
 - **Docker**: Para construir y gestionar imágenes de contenedores.
 - **kubectl**: Para interactuar con tu clúster de Kubernetes.
 - **Helm**: Para gestionar paquetes de Kubernetes (en este caso, la pila de monitoreo).
 - Un clúster de Kubernetes activo (ej. Minikube, Docker Desktop, o un proveedor en la nube como GKE, EKS, AKS).
 - Un Ingress Controller (como NGINX) instalado en tu clúster.
+
+## Configuración en GitHub Codespaces
+
+Si prefieres trabajar en GitHub Codespaces, hemos incluido una configuración automática:
+
+### 1. Crear un Codespace
+
+1. Ve al repositorio en GitHub
+2. Haz clic en **Code** > **Codespaces** > **Create codespace on master**
+3. Espera a que el Codespace se inicialice (se instalarán Docker, kubectl y Helm automáticamente)
+
+### 2. Configurar Kubernetes en Codespaces
+
+Una vez que el Codespace esté listo, ejecuta el script de configuración:
+
+```bash
+cd microservice-k8s-migration/scripts
+bash setup-codespaces.sh
+```
+
+Este script instalará:
+- kubectl (si no está disponible)
+- kind (Kubernetes in Docker)
+- Helm
+- Un clúster de Kubernetes local
+- NGINX Ingress Controller
+
+### 3. Desplegar la Aplicación
+
+Después de la configuración, puedes desplegar la aplicación normalmente:
+
+```bash
+bash deploy-app.sh
+```
+
+### 4. Acceder a la Aplicación en Codespaces
+
+En Codespaces, usa el panel de **Puertos** para acceder a los servicios:
+- El puerto **80** será redirigido automáticamente y podrás acceder al frontend
+- Haz clic en el icono de "globe" junto al puerto para abrir la URL pública
 
 ## Cómo Usar los Scripts
 

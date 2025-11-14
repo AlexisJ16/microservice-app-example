@@ -1,0 +1,49 @@
+{
+  "name": "Microservices Kubernetes Migration",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest",
+      "minikube": "none"
+    }
+  },
+  "postCreateCommand": "chmod +x microservice-k8s-migration/scripts/*.sh",
+  "forwardPorts": [80, 443, 3000, 5001, 5002, 8080],
+  "portsAttributes": {
+    "80": {
+      "label": "Ingress HTTP",
+      "onAutoForward": "notify"
+    },
+    "443": {
+      "label": "Ingress HTTPS",
+      "onAutoForward": "notify"
+    },
+    "3000": {
+      "label": "Client Frontend",
+      "onAutoForward": "notify"
+    },
+    "5001": {
+      "label": "Users Service",
+      "onAutoForward": "silent"
+    },
+    "5002": {
+      "label": "Posts Service",
+      "onAutoForward": "silent"
+    },
+    "8080": {
+      "label": "Grafana Dashboard",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml"
+      ]
+    }
+  }
+}
