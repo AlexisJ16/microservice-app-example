@@ -20,10 +20,10 @@ spec:
     spec:
       containers:
         - name: posts-service
-          image: alexisj16/posts-service:latest
-          imagePullPolicy: IfNotPresent
+          image: posts-service:latest
+          imagePullPolicy: Never
           ports:
-            - containerPort: 5002
+            - containerPort: 8082
           envFrom:
             - configMapRef:
                 name: app-config
@@ -48,4 +48,4 @@ spec:
   ports:
     - protocol: TCP
       port: 5002
-      targetPort: 5002
+      targetPort: 8082

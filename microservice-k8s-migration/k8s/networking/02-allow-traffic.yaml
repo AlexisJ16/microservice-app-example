@@ -25,28 +25,25 @@ spec:
               app.kubernetes.io/name: ingress-nginx
       ports:
         - protocol: TCP
-          port: 3000 # Puerto del client-service
+          port: 8080 # Puerto del client-service
         - protocol: TCP
-          port: 5001 # Puerto del users-service
+          port: 8000 # Puerto del auth-service
         - protocol: TCP
-          port: 5002 # Puerto del posts-service
-    # 2. Permite que el cliente (frontend) se comunique con los servicios de backend (users y posts).
+          port: 8083 # Puerto del users-service
+        - protocol: TCP
+          port: 8082 # Puerto del posts-service
+    # 2. Permite el tráfico entrante entre los pods del namespace.
     - from:
-        - podSelector:
-            matchLabels:
-              app: client
-      to:
-        - podSelector:
-            matchLabels:
-              app: users
-        - podSelector:
-            matchLabels:
-              app: posts
+        - podSelector: {}
       ports:
         - protocol: TCP
-          port: 5001
+          port: 8000
         - protocol: TCP
-          port: 5002
+          port: 8083
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8080
   egress:
     # 1. Permite todas las consultas DNS al servicio kube-dns.
     - to:
@@ -59,16 +56,15 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # 2. Permite el tráfico de salida desde el cliente hacia los backends.
+    # 2. Permite el tráfico de salida desde los pods hacia otros servicios internos.
     - to:
-        - podSelector:
-            matchLabels:
-              app: users
-        - podSelector:
-            matchLabels:
-              app: posts
+        - podSelector: {}
       ports:
         - protocol: TCP
-          port: 5001
+          port: 8000
         - protocol: TCP
-          port: 5002
+          port: 8083
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8080

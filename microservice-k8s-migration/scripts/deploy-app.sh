@@ -11,14 +11,35 @@ info() {
   echo "INFO: $1"
 }
 
-# 1. Construir imágenes de Docker (opcional, si se hacen cambios locales)
+# 1. Construir imágenes de Docker y cargarlas en kind
 info "Paso 1: Construyendo imágenes de Docker..."
-# Descomenta las siguientes líneas si necesitas construir las imágenes desde el código fuente.
-# Asegúrate de estar en el directorio raíz del repositorio.
-# (cd ../auth-api && docker build -t alexisj16/users-service:latest .)
-# (cd ../todos-api && docker build -t alexisj16/posts-service:latest .)
-# (cd ../frontend && docker build -t alexisj16/client:latest .)
-info "Paso 1: Omitido. Usando imágenes pre-construidas de Docker Hub."
+
+CLUSTER_NAME="microservices-cluster"
+
+# Construir imagen de auth-service
+info "Construyendo auth-service..."
+docker build -t auth-service:latest ../../auth-api/
+
+# Construir imagen de users-service
+info "Construyendo users-service..."
+docker build -t users-service:latest ../../users-api/
+
+# Construir imagen de posts-service
+info "Construyendo posts-service..."
+docker build -t posts-service:latest ../../todos-api/
+
+# Construir imagen de client
+info "Construyendo client..."
+docker build -t client:latest ../../frontend/
+
+# Cargar imágenes en el cluster kind
+info "Cargando imágenes en el cluster kind..."
+kind load docker-image auth-service:latest --name $CLUSTER_NAME
+kind load docker-image users-service:latest --name $CLUSTER_NAME
+kind load docker-image posts-service:latest --name $CLUSTER_NAME
+kind load docker-image client:latest --name $CLUSTER_NAME
+
+info "Imágenes construidas y cargadas exitosamente."
 
 # 2. Aplicar los manifiestos de Kubernetes
 info "Paso 2: Aplicando manifiestos de Kubernetes..."
@@ -34,6 +55,7 @@ info "Aplicando PersistentVolumeClaim..."
 kubectl apply -f ../k8s/03-posts-pvc.yaml
 
 info "Aplicando Deployments y Services..."
+kubectl apply -f ../k8s/03-auth-deployment.yaml
 kubectl apply -f ../k8s/04-users-deployment.yaml
 kubectl apply -f ../k8s/05-posts-deployment.yaml
 kubectl apply -f ../k8s/06-client-deployment.yaml
