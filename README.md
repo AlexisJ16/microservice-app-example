@@ -1,22 +1,23 @@
-# Aplicación de Microservicios - Migración a Kubernetes
+# Aplicación de Microservicios en Kubernetes
 
-[![GitHub Codespaces](https://img.shields.io/badge/Codespaces-Ready-blue?logo=github)](https://github.com/codespaces)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Enabled-326CE5?logo=kubernetes)](https://kubernetes.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 📋 Descripción del Proyecto
 
-Aplicación de microservicios completa que demuestra patrones modernos de arquitectura Cloud Native, implementando migración a Kubernetes con mejores prácticas de DevOps. El proyecto incluye autenticación, gestión de usuarios, TODOs, y un frontend interactivo, todo desplegable en Kubernetes con un solo comando.
+Este proyecto implementa una **aplicación completa de microservicios** desplegada en **Kubernetes**, demostrando las mejores prácticas de arquitectura distribuida, orquestación de contenedores, seguridad, escalabilidad y observabilidad.
+
+La aplicación consiste en un **sistema de gestión de tareas (TODOs)** con autenticación de usuarios, construida con múltiples tecnologías y lenguajes de programación, simulando un entorno de producción real.
 
 ### 🎯 Características Principales
 
-- **Arquitectura de Microservicios**: 3 servicios backend independientes (Auth, Users, TODOs)
-- **Frontend Moderno**: Aplicación Vue.js responsiva
-- **Kubernetes Native**: Manifiestos completos siguiendo mejores prácticas
-- **Seguridad**: NetworkPolicies, Secrets, RBAC
-- **Escalabilidad**: HorizontalPodAutoscaler configurado
-- **Observabilidad**: Stack completo de Prometheus + Grafana
-- **GitHub Codespaces**: Entorno preconfigurado listo para usar
+- **Arquitectura de Microservicios**: 4 servicios independientes (Frontend, Auth, Users, Posts)
+- **Múltiples Tecnologías**: Go, Java, Node.js, Vue.js
+- **Kubernetes Native**: Manifiestos completos con mejores prácticas
+- **Seguridad Avanzada**: Network Policies, Secrets, JWT
+- **Escalabilidad Automática**: Horizontal Pod Autoscaler (HPA)
+- **Observabilidad Completa**: Prometheus + Grafana preconfigurados
+- **Despliegue Automatizado**: Scripts simples y documentación completa
 
 ## 🏗️ Arquitectura
 
@@ -98,105 +99,365 @@ Interfaz de usuario interactiva.
 - **HorizontalPodAutoscaler**: Autoescalado basado en CPU (75%)
 - **NetworkPolicies**: Seguridad de red (deny-all + allow específicos)
 
-## 🚀 Inicio Rápido con GitHub Codespaces
+## 🚀 Guía de Instalación y Despliegue
 
-La forma más rápida de probar este proyecto es usando GitHub Codespaces, que proporciona un entorno completo preconfigurado.
+### Prerequisitos
 
-### Paso 1: Crear un Codespace
+Asegúrate de tener instalado:
 
-1. Ve al repositorio en GitHub
-2. Haz clic en **Code** → **Codespaces** → **Create codespace on master**
-3. Espera 2-3 minutos mientras se configura el entorno
+- **Docker** (v20.10+)
+- **kubectl** (v1.25+)
+- **kind** (v0.17+)
+- **Helm** (v3.10+)
 
-El Codespace incluye automáticamente:
+### Paso 1: Clonar el Repositorio
 
-- Docker-in-Docker
-- kubectl
-- Helm
-- Extensiones de VS Code para Kubernetes
+```bash
+git clone <repository-url>
+cd microservice-app-example
+```
 
-### Paso 2: Configurar Kubernetes (kind)
+### Paso 2: Crear el Clúster Kubernetes
 
-Ejecuta el script de configuración que instalará un clúster Kubernetes local usando **kind**:
+Si aún no tienes un clúster kind:
 
 ```bash
 cd microservice-k8s-migration/scripts
-bash setup-codespaces.sh
+chmod +x setup-codespaces.sh
+./setup-codespaces.sh
+cd ../..
 ```
 
-Este script realiza las siguientes acciones:
+Este script:
+- Crea el clúster `microservices-cluster`
+- Instala Ingress Controller NGINX
+- Instala Prometheus + Grafana
 
-- Instala `kubectl` (si no está disponible)
-- Instala `kind` (Kubernetes in Docker)
-- Instala `Helm` v3
-- Crea un clúster llamado `microservices-cluster`
-- Instala NGINX Ingress Controller
-- Configura port mappings para acceso externo
-
-⏱️ **Tiempo estimado**: 3-5 minutos
+⏱️ **Tiempo**: 3-5 minutos
 
 ### Paso 3: Desplegar la Aplicación
 
 ```bash
-bash deploy-app.sh
+chmod +x scripts/*.sh
+./scripts/deploy.sh
 ```
 
-Este script ejecuta:
+⏱️ **Tiempo**: 2-3 minutos
 
-1. Aplica el namespace
-2. Crea ConfigMaps y Secrets
-3. Crea PersistentVolumeClaim
-4. Despliega los 3 microservicios con sus Services
-5. Configura el Ingress
-6. Habilita HPA para el servicio de usuarios
-7. Aplica NetworkPolicies de seguridad
-8. Muestra el estado final de todos los recursos
-
-### Paso 4: Acceder a la Aplicación
-
-En GitHub Codespaces:
-
-1. Ve al panel de **PUERTOS** (parte inferior de VS Code)
-2. Busca el puerto **80** (Ingress HTTP)
-3. Haz clic en el icono del globo 🌐 para abrir la URL pública
-4. ¡La aplicación está lista para usar!
-
-**Usuarios de prueba**:
-
-| Username | Password |
-|----------|----------|
-| admin    | admin    |
-| johnd    | foo      |
-| janed    | ddd      |
-
-### Paso 5: (Opcional) Desplegar Monitoreo
-
-Para habilitar Prometheus y Grafana:
+### Paso 4: Verificar el Despliegue
 
 ```bash
-bash deploy-monitoring.sh
+./scripts/status.sh
 ```
 
-**Acceder a Grafana**:
+Deberías ver todos los pods en estado `Running`.
+
+---
+
+## 🌐 Acceso a la Aplicación
+
+### Importante: Uso de Port-Forward
+
+**Cada port-forward requiere una terminal separada que debe mantenerse abierta.**
+
+### Terminal 1: Acceso al Frontend
 
 ```bash
-# Port forward a Grafana
-kubectl port-forward -n monitoring svc/prometheus-grafana 8080:80
-
-# Obtener contraseña de admin
-kubectl get secret -n monitoring prometheus-grafana -o jsonpath='{.data.admin-password}' | base64 --decode
+./scripts/port-forward.sh
 ```
+
+Abre tu navegador en: **http://localhost:8080**
+
+#### Credenciales de Acceso
+
+| Usuario | Contraseña | Rol |
+|---------|-----------|-----|
+| `admin` | `admin` | Administrador |
+| `johnd` | `foo` | Usuario |
+| `janed` | `ddd` | Usuario |
+
+**Funcionalidades**:
+- ✅ Login con JWT
+- ✅ Crear TODOs
+- ✅ Listar TODOs
+- ✅ Eliminar TODOs
+- ✅ Logout
+
+### Terminal 2: Acceso a Grafana (Opcional)
+
+**Abre una NUEVA terminal:**
+
+```bash
+./scripts/grafana.sh
+```
+
+Accede a: **http://localhost:3000**
+- Usuario: `admin`
+- Contraseña: `admin123`
+
+### Terminal 3: Acceso a Prometheus (Opcional)
+
+**Abre otra NUEVA terminal:**
+
+```bash
+./scripts/prometheus.sh
+```
+
+Accede a: **http://localhost:9090**
+
+---
+
+## 🎬 Guía para Demostración en Video
+
+Esta sección está diseñada para ayudarte a grabar un video profesional demostrando el proyecto.
+
+### Preparación Antes de Grabar
+
+1. **Limpia el entorno**:
+   ```bash
+   ./scripts/cleanup.sh
+   ```
+
+2. **Valida desde cero**:
+   ```bash
+   ./scripts/validate.sh
+   ```
+
+3. **Configura tu terminal**:
+   - Aumenta el tamaño de fuente (16-18pt)
+   - Usa tema con buen contraste
+   - Maximiza la ventana del terminal
+
+### Estructura Sugerida del Video (15-20 min)
+
+#### Parte 1: Introducción (2 min)
+
+**Qué mostrar:**
+- Arquitectura general del proyecto
+- Explicar los 4 microservicios
+- Tecnologías utilizadas (Go, Java, Node.js, Vue.js)
+- Mencionar características: seguridad, escalabilidad, monitoreo
+
+**Script sugerido:**
+> "Este proyecto implementa una arquitectura completa de microservicios en Kubernetes. Tenemos 4 servicios: un frontend en Vue.js, un servicio de autenticación en Go, gestión de usuarios en Java Spring Boot, y un servicio de tareas en Node.js. Además incluye NetworkPolicies para seguridad, HPA para escalabilidad automática, y monitoreo con Prometheus y Grafana."
+
+#### Parte 2: Despliegue (3-4 min)
+
+**Qué hacer:**
+
+1. Mostrar el directorio del proyecto:
+   ```bash
+   ls -la
+   ```
+
+2. Explicar la carpeta scripts:
+   ```bash
+   ls -la scripts/
+   ```
+
+3. Ejecutar el despliegue:
+   ```bash
+   ./scripts/deploy.sh
+   ```
+
+**Mientras se ejecuta, explicar:**
+- Se están construyendo 4 imágenes Docker
+- Se cargan en el clúster kind
+- Se aplican manifiestos de Kubernetes
+- Se espera a que los pods estén ready
+
+4. Verificar el estado:
+   ```bash
+   ./scripts/status.sh
+   ```
+
+**Explicar cada sección:**
+- Pods (4 servicios corriendo)
+- Services (ClusterIP para comunicación interna)
+- Ingress (punto de entrada HTTP)
+- HPA (escalado automático)
+- NetworkPolicies (seguridad)
+- PVC (persistencia)
+
+#### Parte 3: Demostración de la Aplicación (5-6 min)
+
+**Paso 1: Abrir port-forward (Terminal 1)**
+
+```bash
+./scripts/port-forward.sh
+```
+
+**Explicar:**
+> "Es fundamental abrir una nueva terminal para cada port-forward y mantenerla abierta. Este comando crea un túnel entre nuestro localhost:8080 y el Ingress Controller dentro del clúster Kubernetes. Sin este túnel activo, no podríamos acceder a la aplicación."
+
+**Paso 2: Abrir navegador**
+
+- Acceder a `http://localhost:8080`
+- Mostrar la pantalla de login
+
+**Paso 3: Login**
 
 - Usuario: `admin`
-- Abre el puerto **8080** desde el panel de PUERTOS
+- Contraseña: `admin`
 
-### Paso 6: Limpiar Recursos
+**Explicar el flujo:**
+> "Al hacer login, el navegador envía las credenciales al Ingress, este las enruta al servicio de autenticación desarrollado en Go, que valida las credenciales consultando el servicio de usuarios en Java, y finalmente retorna un token JWT que se almacena en el navegador."
 
-Cuando termines de probar:
+**Paso 4: Crear TODOs**
+
+- Crear 2-3 tareas de ejemplo
+- Mostrar el contador actualizándose
+
+**Explicar:**
+> "Las peticiones al crear un TODO pasan por: Navegador → Ingress (ruta /todos) → Posts Service (Node.js) → Redis → PVC para persistencia."
+
+**Paso 5: Eliminar un TODO**
+
+- Eliminar una tarea
+- Mostrar que se actualiza la lista
+
+**Paso 6: Demostrar persistencia**
+
+En otra terminal:
+```bash
+kubectl delete pod -n microservices-ns -l app=posts
+kubectl get pods -n microservices-ns -w
+```
+
+**Explicar:**
+> "Voy a eliminar el pod de posts para simular un fallo. Kubernetes lo recreará automáticamente gracias al Deployment."
+
+- Esperar a que el nuevo pod esté Running
+- Recargar la página del navegador
+- Mostrar que los TODOs persisten
+
+**Explicar:**
+> "Gracias al PersistentVolumeClaim, los datos sobreviven al ciclo de vida de los pods."
+
+#### Parte 4: Monitoreo (4-5 min)
+
+**Paso 1: Abrir Grafana (Terminal 2 NUEVA)**
+
+**Explicar:**
+> "Ahora voy a abrir una segunda terminal nueva para no cerrar el port-forward de la aplicación. Cada servicio que queramos acceder desde fuera del clúster necesita su propio port-forward en una terminal separada."
 
 ```bash
-bash cleanup.sh
+./scripts/grafana.sh
 ```
+
+**Paso 2: Acceder a Grafana**
+
+- Abrir `http://localhost:3000`
+- Login: admin / admin123
+- Navegar a Dashboards → Browse
+- Abrir "Kubernetes / Compute Resources / Namespace (Pods)"
+- Filtrar por namespace: `microservices-ns`
+
+**Mostrar:**
+- CPU usage por pod
+- Memoria usage por pod
+- Network I/O
+
+**Paso 3: Prometheus (Terminal 3 NUEVA - Opcional)**
+
+```bash
+./scripts/prometheus.sh
+```
+
+- Abrir `http://localhost:9090`
+- Ejecutar queries:
+
+```promql
+# CPU por pod
+sum(rate(container_cpu_usage_seconds_total{namespace="microservices-ns"}[5m])) by (pod)
+
+# Memoria por pod
+container_memory_usage_bytes{namespace="microservices-ns"}
+```
+
+#### Parte 5: Seguridad y Escalabilidad (3-4 min)
+
+**Network Policies:**
+
+```bash
+kubectl get networkpolicies -n microservices-ns
+kubectl describe networkpolicy default-deny-all -n microservices-ns
+```
+
+**Explicar:**
+> "Implementamos un modelo de seguridad Zero Trust. Por defecto, todo el tráfico está denegado, y luego definimos reglas específicas para permitir solo las comunicaciones necesarias entre servicios."
+
+**Horizontal Pod Autoscaler:**
+
+```bash
+kubectl get hpa -n microservices-ns
+kubectl describe hpa users-hpa -n microservices-ns
+```
+
+**Explicar:**
+> "El HPA monitorea el uso de CPU del users-service. Cuando supera el 70%, automáticamente escala de 2 a 5 réplicas. Cuando baja, reduce las réplicas para optimizar recursos."
+
+**Ver logs en tiempo real:**
+
+```bash
+./scripts/view-logs.sh
+```
+
+**Monitoreo de pods:**
+
+```bash
+./scripts/watch-pods.sh
+```
+
+(Presionar Ctrl+C para salir)
+
+#### Parte 6: Cierre (1-2 min)
+
+**Resumen de lo demostrado:**
+
+✅ Despliegue automatizado con un solo comando  
+✅ 4 microservicios funcionando (Go, Java, Node.js, Vue.js)  
+✅ Autenticación JWT funcionando  
+✅ Persistencia de datos verificada  
+✅ Monitoreo con Prometheus y Grafana  
+✅ Network Policies para seguridad  
+✅ HPA para escalado automático  
+
+**Mostrar estructura del proyecto:**
+
+```bash
+tree -L 2 -I 'node_modules|target|dist'
+```
+
+**Limpiar recursos:**
+
+```bash
+./scripts/cleanup.sh
+```
+
+**Mensaje final:**
+> "Este proyecto demuestra una implementación completa de microservicios en Kubernetes siguiendo las mejores prácticas de la industria. Todo el código y documentación están disponibles en el repositorio."
+
+### Tips para una Mejor Grabación
+
+1. **Resolución**: Graba en 1920x1080 mínimo
+2. **Fuente**: Usa fuente grande (16-18pt) y legible
+3. **Tema**: Usa tema de terminal con buen contraste
+4. **Pausa**: Explica ANTES de ejecutar cada comando
+5. **Etiquetas**: Identifica claramente Terminal 1, 2, 3
+6. **Errores**: Si algo falla, explica por qué y cómo solucionarlo
+7. **Ritmo**: No te apresures, deja tiempo para que se vea cada resultado
+
+---
+
+## 🚀 Inicio Rápido con GitHub Codespaces (Alternativo)
+
+Si prefieres usar GitHub Codespaces:
+
+1. Click en **Code** → **Codespaces** → **Create codespace**
+2. Espera 2-3 minutos
+3. El entorno viene con Docker, kubectl, kind y helm preinstalados
+4. Sigue los pasos de despliegue normales
 
 Este comando elimina:
 
@@ -226,20 +487,21 @@ Este comando elimina:
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/AlexisJ16/microservice-app-example.git
+git clone <repository-url>
 cd microservice-app-example
 
-# Navegar al directorio de Kubernetes
+# Crear el clúster kind (si aún no existe)
 cd microservice-k8s-migration/scripts
+chmod +x setup-codespaces.sh
+./setup-codespaces.sh
+cd ../..
 
 # Desplegar la aplicación
-./deploy-app.sh
+chmod +x scripts/*.sh
+./scripts/deploy.sh
 
 # Verificar el despliegue
-kubectl get all -n microservices-ns
-
-# Obtener la URL del Ingress
-kubectl get ingress -n microservices-ns
+./scripts/status.sh
 ```
 
 ## 📁 Estructura del Repositorio
@@ -466,7 +728,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 ## 👥 Autores
 
 - **Proyecto Original**: [bortizf](https://github.com/bortizf)
-- **Migración a Kubernetes**: AlexisJ16
+- **Desarrollo y Arquitectura**: Equipo de desarrollo
 
 ## 🙏 Agradecimientos
 
